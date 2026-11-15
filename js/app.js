@@ -1,39 +1,122 @@
 const statusNames = { todo: "To do", progress: "In progress", done: "Done" };
 let releaseOptions = ["Unassigned"];
+let userOptions = [];
 const taskLists = Object.fromEntries(Object.keys(statusNames).map(status => [status, document.querySelector(`#${status}`)]));
 const form = document.querySelector("#task-form");
 const input = document.querySelector("#task-input");
 const descriptionInput = document.querySelector("#task-description");
 const taskReleaseInput = document.querySelector("#task-release");
+const taskAssigneeInput = document.querySelector("#task-assignee");
 const searchInput = document.querySelector("#task-search");
 const releaseFilterInput = document.querySelector("#task-release-filter");
+const userFilterInput = document.querySelector("#task-user-filter");
 const saveState = document.querySelector("#save-state");
 const editDialog = document.querySelector("#edit-task-dialog");
 const editForm = document.querySelector("#edit-task-form");
 const editTitleInput = document.querySelector("#edit-task-title");
 const editDescriptionInput = document.querySelector("#edit-task-description");
 const editReleaseInput = document.querySelector("#edit-task-release");
+const editAssigneeInput = document.querySelector("#edit-task-assignee");
 const releaseAdminButton = document.querySelector("#manage-releases-button");
 const releaseAdminDialog = document.querySelector("#release-admin-dialog");
 const releaseAdminForm = document.querySelector("#release-admin-form");
 const releaseList = document.querySelector("#release-list");
 const newReleaseInput = document.querySelector("#new-release-name");
 const addReleaseButton = document.querySelector("#add-release-button");
+const userAdminButton = document.querySelector("#manage-users-button");
+const userAdminDialog = document.querySelector("#user-admin-dialog");
+const userAdminForm = document.querySelector("#user-admin-form");
+const userList = document.querySelector("#user-list");
+const newUserInput = document.querySelector("#new-user-name");
+const addUserButton = document.querySelector("#add-user-button");
 const dashboardView = document.querySelector("#dashboard-view");
 const boardView = document.querySelector("#board-view");
 const dashboardChartCanvas = document.querySelector("#task-status-chart");
 const chartFallback = document.querySelector("#chart-fallback");
 const chartMessage = document.querySelector("#chart-message");
+const userChartCanvas = document.querySelector("#task-user-chart");
+const userChartFallback = document.querySelector("#user-chart-fallback");
+const userChartMessage = document.querySelector("#user-chart-message");
+const userChartBreakdown = document.querySelector("#user-chart-breakdown");
+const userChartColors = ["#287c6c", "#d19a50", "#5b9b70", "#7d79a8", "#cf796b", "#5e8fb3", "#9d845a", "#9c6e9a"];
 let tasks = [];
+let userDraftOptions = [];
 let saveQueue = Promise.resolve();
 let nextStatus = "todo";
 let taskStatusChart = null;
+let taskUserChart = null;
 
 function normalizeRelease(value) {
     const candidate = typeof value === "string" ? value.trim() : "";
     if (!candidate) return "Unassigned";
     if (releaseOptions.includes(candidate)) return candidate;
     return "Unassigned";
+}
+
+function normalizeAssignee(value) {
+    const candidate = typeof value === "string" ? value.trim() : "";
+    return userOptions.includes(candidate) ? candidate : "";
+}
+
+function populateAssigneeOptions(select, selectedValue = "") {
+    if (!select) return;
+    select.replaceChildren();
+    const unassigned = document.createElement("option");
+    unassigned.value = "";
+    unassigned.textContent = "Unassigned";
+    select.append(unassigned);
+    for (const user of userOptions) {
+        const option = document.createElement("option");
+        option.value = user;
+        option.textContent = user;
+        select.append(option);
+    }
+    select.value = normalizeAssignee(selectedValue);
+}
+
+function populateUserFilter(selectedValue = "") {
+    userFilterInput.replaceChildren();
+    const allUsers = document.createElement("option");
+    allUsers.value = "";
+    allUsers.textContent = "All users";
+    userFilterInput.append(allUsers);
+    for (const user of userOptions) {
+        const option = document.createElement("option");
+        option.value = user;
+        option.textContent = user;
+        userFilterInput.append(option);
+    }
+    userFilterInput.value = userOptions.includes(selectedValue) ? selectedValue : "";
+}
+
+function renderUserList() {
+    if (!userList) return;
+    userList.replaceChildren();
+    if (!userDraftOptions.length) {
+        const empty = document.createElement("li");
+        empty.className = "release-empty";
+        empty.textContent = "No users yet. Add a user to assign tasks to them.";
+        userList.append(empty);
+        return;
+    }
+    for (const user of userDraftOptions) {
+        const item = document.createElement("li");
+        item.className = "release-item";
+        const name = document.createElement("span");
+        name.className = "release-item-name";
+        name.textContent = user;
+        const removeButton = document.createElement("button");
+        removeButton.type = "button";
+        removeButton.className = "release-remove";
+        removeButton.textContent = "Remove";
+        removeButton.title = `Remove ${user}`;
+        removeButton.addEventListener("click", () => {
+            userDraftOptions = userDraftOptions.filter(option => option !== user);
+            renderUserList();
+        });
+        item.append(name, removeButton);
+        userList.append(item);
+    }
 }
 
 function syncReleaseOptions(options) {
@@ -112,6 +195,82 @@ function updateOverview() {
     updateDashboard(counts, completion);
 }
 
+function updateUserChart() {
+    const counts = new Map(userOptions.map(user => [user, 0]));
+    let unassignedCount = 0;
+    for (const task of tasks) {
+        const assignedTo = normalizeAssignee(task.assignedTo);
+        if (assignedTo) counts.set(assignedTo, counts.get(assignedTo) + 1);
+        else unassignedCount += 1;
+    }
+
+    const entries = [...counts].filter(([, count]) => count > 0);
+    if (unassignedCount > 0) entries.push(["Unassigned", unassignedCount]);
+    const labels = entries.map(([name]) => name);
+    const data = entries.map(([, count]) => count);
+    const colors = entries.map((_, index) => userChartColors[index % userChartColors.length]);
+    userChartBreakdown.replaceChildren();
+
+    entries.forEach(([name, count], index) => {
+        const row = document.createElement("div");
+        row.className = "breakdown-row";
+        const label = document.createElement("span");
+        label.className = "breakdown-label";
+        const dot = document.createElement("i");
+        dot.className = "breakdown-dot";
+        dot.style.backgroundColor = colors[index];
+        label.append(dot, document.createTextNode(name));
+        const taskCount = document.createElement("strong");
+        taskCount.textContent = count;
+        const percentage = document.createElement("span");
+        percentage.textContent = `${tasks.length ? Math.round((count / tasks.length) * 100) : 0}%`;
+        row.append(label, taskCount, percentage);
+        userChartBreakdown.append(row);
+    });
+
+    userChartMessage.hidden = tasks.length > 0;
+    userChartMessage.textContent = tasks.length ? "" : "Add tasks to see the user breakdown.";
+    if (!window.Chart) {
+        userChartCanvas.hidden = true;
+        userChartFallback.hidden = entries.length === 0;
+        const segments = [];
+        let progress = 0;
+        entries.forEach(([, count], index) => {
+            const end = progress + (count / tasks.length) * 100;
+            segments.push(`${colors[index]} ${progress}% ${end}%`);
+            progress = end;
+        });
+        userChartFallback.style.background = segments.length ? `conic-gradient(${segments.join(", ")})` : "";
+        return;
+    }
+
+    userChartCanvas.hidden = false;
+    userChartFallback.hidden = true;
+    if (!taskUserChart) {
+        taskUserChart = new Chart(userChartCanvas, {
+            type: "pie",
+            data: {
+                labels,
+                datasets: [{ data, backgroundColor: colors, borderColor: "#ffffff", borderWidth: 4, hoverOffset: 7 }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 300 },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: context => ` ${context.label}: ${context.raw} task${context.raw === 1 ? "" : "s"}` } }
+                }
+            }
+        });
+    } else {
+        taskUserChart.data.labels = labels;
+        taskUserChart.data.datasets[0].data = data;
+        taskUserChart.data.datasets[0].backgroundColor = colors;
+        taskUserChart.update();
+    }
+}
+
 function updateDashboard(counts = Object.fromEntries(Object.keys(statusNames).map(status => [status, tasks.filter(task => task.status === status).length])), completion = tasks.length ? Math.round((tasks.filter(task => task.status === "done").length / tasks.length) * 100) : 0) {
     document.querySelector("#dashboard-total").textContent = tasks.length;
     document.querySelector("#dashboard-todo").textContent = counts.todo;
@@ -129,6 +288,7 @@ function updateDashboard(counts = Object.fromEntries(Object.keys(statusNames).ma
     }
 
     if (dashboardView.hidden) return;
+    updateUserChart();
     if (!window.Chart) {
         dashboardChartCanvas.hidden = true;
         chartFallback.hidden = tasks.length === 0;
@@ -171,6 +331,8 @@ function renderTasks() {
     for (const list of Object.values(taskLists)) list.replaceChildren();
     const query = searchInput.value.trim().toLowerCase();
     const filterRelease = releaseFilterInput ? releaseFilterInput.value : "All releases";
+    const filterUser = userFilterInput.value;
+    const hasFilter = query.length > 0 || filterRelease !== "All releases" || filterUser !== "";
     for (const task of tasks) {
         const card = document.createElement("article");
         card.className = "task";
@@ -191,6 +353,10 @@ function renderTasks() {
         releaseBadge.className = "task-release";
         releaseBadge.textContent = normalizeRelease(task.release);
         card.append(releaseBadge);
+        const assigneeBadge = document.createElement("div");
+        assigneeBadge.className = "task-assignee";
+        assigneeBadge.textContent = normalizeAssignee(task.assignedTo) || "Unassigned";
+        card.append(assigneeBadge);
 
         const meta = document.createElement("div");
         meta.className = "task-meta";
@@ -222,7 +388,13 @@ function renderTasks() {
         releaseSelect.value = normalizeRelease(task.release);
         releaseSelect.addEventListener("change", () => updateTaskRelease(task.id, releaseSelect.value));
 
-        controls.append(select, releaseSelect);
+        const assigneeSelect = document.createElement("select");
+        assigneeSelect.className = "task-assignee-select";
+        assigneeSelect.setAttribute("aria-label", `Assignee for ${task.title}`);
+        populateAssigneeOptions(assigneeSelect, task.assignedTo);
+        assigneeSelect.addEventListener("change", () => updateTaskAssignee(task.id, assigneeSelect.value));
+
+        controls.append(select, releaseSelect, assigneeSelect);
 
         const editButton = document.createElement("button");
         editButton.className = "edit-button";
@@ -248,8 +420,9 @@ function renderTasks() {
         });
         card.addEventListener("dragend", () => card.classList.remove("dragging"));
         const matchesRelease = filterRelease === "All releases" || normalizeRelease(task.release) === filterRelease;
-        const matchesQuery = query.length === 0 || `${task.title} ${task.description ?? ""}`.toLowerCase().includes(query);
-        card.hidden = !matchesRelease || !matchesQuery;
+        const matchesUser = !filterUser || normalizeAssignee(task.assignedTo) === filterUser;
+        const matchesQuery = query.length === 0 || `${task.title} ${task.description ?? ""} ${task.assignedTo ?? ""}`.toLowerCase().includes(query);
+        card.hidden = !matchesRelease || !matchesUser || !matchesQuery;
         taskLists[task.status].append(card);
     }
 
@@ -257,7 +430,7 @@ function renderTasks() {
         if (!list.children.length || [...list.children].every(card => card.hidden)) {
             const empty = document.createElement("div");
             empty.className = "empty-state";
-            empty.textContent = query ? "No matching tasks" : "Nothing here yet";
+            empty.textContent = hasFilter ? "No matching tasks" : "Nothing here yet";
             list.append(empty);
         }
     }
@@ -291,14 +464,22 @@ function updateTaskRelease(taskId, release) {
     persistTasks();
 }
 
+function updateTaskAssignee(taskId, assignedTo) {
+    const task = tasks.find(item => item.id === taskId);
+    if (!task) return;
+    task.assignedTo = normalizeAssignee(assignedTo) || null;
+    renderTasks();
+    persistTasks();
+}
+
 function removeTask(taskId) {
     tasks = tasks.filter(task => task.id !== taskId);
     renderTasks();
     persistTasks();
 }
 
-function addTask(title, description, release = taskReleaseInput?.value ?? "Unassigned") {
-    tasks.unshift({ id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`, title, description, status: nextStatus, release: normalizeRelease(release), createdAt: new Date().toISOString() });
+function addTask(title, description, release = taskReleaseInput?.value ?? "Unassigned", assignedTo = taskAssigneeInput?.value ?? "") {
+    tasks.unshift({ id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`, title, description, status: nextStatus, release: normalizeRelease(release), assignedTo: normalizeAssignee(assignedTo) || null, createdAt: new Date().toISOString() });
     nextStatus = "todo";
     input.placeholder = "Add a task to your board...";
     renderTasks();
@@ -310,6 +491,7 @@ function openTaskEditor(task) {
     editTitleInput.value = task.title;
     editDescriptionInput.value = task.description ?? "";
     populateReleaseOptions(editReleaseInput, task.release);
+    populateAssigneeOptions(editAssigneeInput, task.assignedTo);
     editDialog.showModal();
     editTitleInput.focus();
 }
@@ -323,6 +505,7 @@ editForm.addEventListener("submit", event => {
     task.title = title;
     task.description = description;
     task.release = normalizeRelease(editReleaseInput.value);
+    task.assignedTo = normalizeAssignee(editAssigneeInput.value) || null;
     editDialog.close();
     renderTasks();
     persistTasks();
@@ -355,6 +538,26 @@ function persistReleaseCatalog() {
             setSaveState("Could not save release list.", "is-error");
             throw new Error("Release list save failed.");
         });
+}
+
+function persistUserCatalog() {
+    const payload = JSON.stringify(userDraftOptions);
+    return saveQueue.then(async () => {
+        const response = await fetch("/api/users", { method: "PUT", headers: { "Content-Type": "application/json" }, body: payload });
+        if (!response.ok) throw new Error("Could not save the user list.");
+        return response.json();
+    }).then(users => {
+        userOptions = [...new Set(users.map(user => user.trim()).filter(Boolean))];
+        tasks = tasks.map(task => ({ ...task, assignedTo: normalizeAssignee(task.assignedTo) || null }));
+        populateAssigneeOptions(taskAssigneeInput, taskAssigneeInput.value);
+        populateUserFilter(userFilterInput.value);
+        renderUserList();
+        renderTasks();
+        setSaveState("User list saved", "is-saved");
+    }).catch(error => {
+        setSaveState("Could not save user list.", "is-error");
+        throw error;
+    });
 }
 
 releaseAdminButton.addEventListener("click", () => {
@@ -400,15 +603,48 @@ releaseAdminDialog.addEventListener("click", event => {
     if (event.target === releaseAdminDialog) releaseAdminDialog.close();
 });
 
+userAdminButton.addEventListener("click", () => {
+    userDraftOptions = [...userOptions];
+    renderUserList();
+    userAdminDialog.showModal();
+    newUserInput.focus();
+});
+
+addUserButton.addEventListener("click", () => {
+    const value = newUserInput.value.trim().replace(/\s+/g, " ");
+    if (!value) return;
+    if (userDraftOptions.includes(value)) {
+        newUserInput.value = "";
+        newUserInput.focus();
+        return;
+    }
+    userDraftOptions = [...userDraftOptions, value];
+    renderUserList();
+    newUserInput.value = "";
+    newUserInput.focus();
+});
+
+userAdminForm.addEventListener("submit", event => {
+    event.preventDefault();
+    persistUserCatalog().then(() => userAdminDialog.close()).catch(() => {});
+});
+
+document.querySelector("#cancel-user-admin").addEventListener("click", () => userAdminDialog.close());
+document.querySelector("#close-user-admin").addEventListener("click", () => userAdminDialog.close());
+userAdminDialog.addEventListener("click", event => {
+    if (event.target === userAdminDialog) userAdminDialog.close();
+});
+
 form.addEventListener("submit", event => {
     event.preventDefault();
     const title = input.value.trim();
     const description = descriptionInput.value.trim();
     if (!title || !description) return;
-    addTask(title, description, taskReleaseInput.value);
+    addTask(title, description, taskReleaseInput.value, taskAssigneeInput.value);
     input.value = "";
     descriptionInput.value = "";
     populateReleaseOptions(taskReleaseInput, "Unassigned");
+    populateAssigneeOptions(taskAssigneeInput, "");
     input.focus();
 });
 
@@ -444,13 +680,17 @@ document.querySelectorAll("[data-view]").forEach(button => {
         });
         if (showDashboard) {
             updateDashboard();
-            requestAnimationFrame(() => taskStatusChart?.resize());
+            requestAnimationFrame(() => {
+                taskStatusChart?.resize();
+                taskUserChart?.resize();
+            });
         }
     });
 });
 
 searchInput.addEventListener("input", renderTasks);
 releaseFilterInput.addEventListener("change", renderTasks);
+userFilterInput.addEventListener("change", renderTasks);
 document.addEventListener("keydown", event => {
     if (event.key === "/" && !["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) {
         event.preventDefault();
@@ -478,10 +718,26 @@ function loadReleaseOptions() {
         });
 }
 
+function loadUserOptions() {
+    return fetch("/api/users")
+        .then(response => {
+            if (!response.ok) throw new Error("User list could not be loaded.");
+            return response.json();
+        })
+        .then(users => {
+            if (!Array.isArray(users) || users.some(user => typeof user !== "string")) throw new Error("User list returned invalid data.");
+            userOptions = [...new Set(users.map(user => user.trim()).filter(Boolean))];
+            populateAssigneeOptions(taskAssigneeInput, "");
+            populateUserFilter();
+        });
+}
+
 populateReleaseOptions(taskReleaseInput, "Unassigned");
 populateReleaseOptions(releaseFilterInput, "All releases", true);
+populateAssigneeOptions(taskAssigneeInput, "");
+populateUserFilter();
 
-loadReleaseOptions().then(() => {
+loadReleaseOptions().then(loadUserOptions).then(() => {
     fetch("/api/tasks")
         .then(response => { if (!response.ok) throw new Error("Task data could not be loaded."); return response.json(); })
         .then(data => {
@@ -489,7 +745,8 @@ loadReleaseOptions().then(() => {
                 ? data.filter(task => task && typeof task.id === "string" && typeof task.title === "string" && statusNames[task.status]).map(task => ({
                     ...task,
                     description: typeof task.description === "string" ? task.description : "",
-                    release: normalizeRelease(task.release)
+                    release: normalizeRelease(task.release),
+                    assignedTo: normalizeAssignee(task.assignedTo) || null
                 }))
                 : [];
             renderTasks();

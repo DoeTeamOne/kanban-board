@@ -38,7 +38,7 @@ To set up and run the Kanban board, follow these steps:
    ```
 6. Open `http://127.0.0.1:4173` in your browser. Keep the terminal running while you use the board.
 
-The server creates the `tasks` table on startup. If `tasks.json` exists and the database has no tasks, its data is imported once into PostgreSQL. After that, PostgreSQL is the source of truth.
+The server creates the `tasks`, `release_catalog`, and `user_catalog` tables on startup and adds assignment support to existing task tables. If `tasks.json` exists and the database has no tasks, its data is imported once into PostgreSQL. After that, PostgreSQL is the source of truth.
 
 ## Features
 
@@ -49,10 +49,13 @@ The server creates the `tasks` table on startup. If `tasks.json` exists and the 
 
 - Drag-and-drop and status menus both update the task's saved status.
 - Each task can be assigned to a release from the release selector, making it easy to group work by delivery milestone.
+- Maintain the user list in PostgreSQL with **Manage users**, then assign users when creating, editing, or updating tasks. Removing a user automatically unassigns their tasks.
+- Filter the board by assignee using the user filter next to the release filter.
+- View the task distribution by assignee in the dashboard's **Tasks by user** pie chart.
 - Search tasks by name with the search field or `/` shortcut.
 - PostgreSQL-backed storage means tasks remain after closing or refreshing the browser.
 
-The board includes a release picker for every task, and the release catalog is maintained in PostgreSQL through the `/api/releases` endpoint. Update the release list there or in the database to match the releases used by your team.
+The board includes a release picker for every task, and the release catalog is maintained in PostgreSQL through the `/api/releases` endpoint. The team user list is maintained through `/api/users`. Use **Manage releases** and **Manage users** in the board to update these lists.
 
 ## Technologies Used
 

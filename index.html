@@ -64,13 +64,20 @@
               <div class="completion-track" role="progressbar" aria-label="Task completion rate" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="completion-track"><span id="completion-fill"></span></div>
               <p class="completion-note" id="completion-note">Complete a task to start building momentum.</p>
             </section>
+            <section class="dashboard-panel user-chart-panel" aria-labelledby="user-chart-heading">
+              <header class="panel-heading"><div><h2 id="user-chart-heading">Tasks by user</h2><p>Distribution of assigned and unassigned tasks</p></div><span class="panel-period">CURRENT</span></header>
+              <div class="chart-content">
+                <div class="chart-wrap"><canvas id="task-user-chart" role="img" aria-label="Pie chart of tasks by user"></canvas><div class="chart-fallback" id="user-chart-fallback" role="img" aria-label="Pie chart of tasks by user" hidden></div><p class="chart-message" id="user-chart-message" hidden></p></div>
+                <div class="chart-breakdown" id="user-chart-breakdown" aria-label="Task counts by user"></div>
+              </div>
+            </section>
           </div>
         </section>
 
         <section class="page-view board-view" id="board-view" aria-label="Task board">
         <section class="page-heading" aria-labelledby="page-title">
           <div><p class="eyebrow">YOUR WORKSPACE <span class="eyebrow-line"></span> <span id="today-label"></span></p><h1 id="page-title">Task board</h1><p class="page-subtitle">A clear view of what needs doing, what's moving, and what's finished.</p></div>
-          <form class="quick-add" id="task-form"><label class="visually-hidden" for="task-input">Task title</label><input id="task-input" type="text" maxlength="180" placeholder="Task title" required><label class="visually-hidden" for="task-description">Task description</label><textarea id="task-description" maxlength="1000" placeholder="Add a short description..." rows="2" required></textarea><label class="visually-hidden" for="task-release">Task release</label><select id="task-release" aria-label="Task release"></select><button class="add-button" type="submit"><span aria-hidden="true">+</span> Add task</button></form>
+          <form class="quick-add" id="task-form"><label class="visually-hidden" for="task-input">Task title</label><input id="task-input" type="text" maxlength="180" placeholder="Task title" required><label class="visually-hidden" for="task-description">Task description</label><textarea id="task-description" maxlength="1000" placeholder="Add a short description..." rows="2" required></textarea><label class="visually-hidden" for="task-release">Task release</label><select id="task-release" aria-label="Task release"></select><label class="visually-hidden" for="task-assignee">Assign task to</label><select id="task-assignee" aria-label="Assign task to"></select><button class="add-button" type="submit"><span aria-hidden="true">+</span> Add task</button></form>
         </section>
 
         <section class="overview" aria-label="Task overview">
@@ -81,7 +88,7 @@
         </section>
 
         <section class="board-section" aria-labelledby="board-heading">
-          <div class="board-toolbar"><div class="board-title-wrap"><h2 id="board-heading">Project flow</h2><span class="board-total" id="board-total">0 tasks</span></div><div class="board-tools"><label class="search-box"><span class="search-icon" aria-hidden="true"></span><span class="visually-hidden">Search tasks</span><input id="task-search" type="search" placeholder="Search tasks"><kbd>/</kbd></label><label class="release-filter"><span class="visually-hidden">Filter by release</span><select id="task-release-filter" aria-label="Filter tasks by release"></select></label><button class="release-admin-button" id="manage-releases-button" type="button">Manage releases</button></div></div>
+          <div class="board-toolbar"><div class="board-title-wrap"><h2 id="board-heading">Project flow</h2><span class="board-total" id="board-total">0 tasks</span></div><div class="board-tools"><label class="search-box"><span class="search-icon" aria-hidden="true"></span><span class="visually-hidden">Search tasks</span><input id="task-search" type="search" placeholder="Search tasks"><kbd>/</kbd></label><label class="release-filter"><span class="visually-hidden">Filter by release</span><select id="task-release-filter" aria-label="Filter tasks by release"></select></label><label class="user-filter"><span class="visually-hidden">Filter by user</span><select id="task-user-filter" aria-label="Filter tasks by user"></select></label><button class="release-admin-button" id="manage-releases-button" type="button">Manage releases</button><button class="release-admin-button" id="manage-users-button" type="button">Manage users</button></div></div>
           <div class="board" aria-label="Task board">
             <section class="column column-todo" data-status="todo" aria-labelledby="todo-heading"><header class="column-heading"><span class="status-indicator"></span><h3 id="todo-heading">To do</h3><span class="column-count" id="todo-count">0</span><span class="column-menu" aria-hidden="true">···</span></header><div class="task-list" id="todo" aria-label="Tasks to do"></div><button class="column-add" type="button" data-add-status="todo"><span aria-hidden="true">+</span> Add task</button></section>
             <section class="column column-progress" data-status="progress" aria-labelledby="progress-heading"><header class="column-heading"><span class="status-indicator"></span><h3 id="progress-heading">In progress</h3><span class="column-count" id="progress-column-count">0</span><span class="column-menu" aria-hidden="true">···</span></header><div class="task-list" id="progress" aria-label="Tasks in progress"></div><button class="column-add" type="button" data-add-status="progress"><span aria-hidden="true">+</span> Add task</button></section>
@@ -102,6 +109,8 @@
       <textarea id="edit-task-description" maxlength="1000" rows="5" required></textarea>
       <label for="edit-task-release">Release</label>
       <select id="edit-task-release" aria-label="Task release"></select>
+      <label for="edit-task-assignee">Assigned to</label>
+      <select id="edit-task-assignee" aria-label="Assign task to"></select>
       <div class="dialog-actions"><button class="cancel-button" id="cancel-edit-action" type="button">Cancel</button><button class="add-button" type="submit">Save changes</button></div>
     </form>
   </dialog>
@@ -115,6 +124,18 @@
       </div>
       <ul class="release-list" id="release-list" aria-label="Available releases"></ul>
       <div class="dialog-actions"><button class="cancel-button" id="close-release-admin" type="button">Close</button><button class="add-button" type="submit">Save changes</button></div>
+    </form>
+  </dialog>
+  <dialog class="task-dialog release-dialog" id="user-admin-dialog" aria-labelledby="user-admin-heading">
+    <form id="user-admin-form">
+      <div class="dialog-heading"><div><p class="eyebrow">TEAM</p><h2 id="user-admin-heading">Manage users</h2></div><button class="dialog-close" id="cancel-user-admin" type="button" aria-label="Close user manager">×</button></div>
+      <label for="new-user-name">Add user</label>
+      <div class="release-admin-inputs">
+        <input id="new-user-name" type="text" maxlength="80" placeholder="User name">
+        <button class="add-button small-button" id="add-user-button" type="button">Add</button>
+      </div>
+      <ul class="release-list" id="user-list" aria-label="Available users"></ul>
+      <div class="dialog-actions"><button class="cancel-button" id="close-user-admin" type="button">Close</button><button class="add-button" type="submit">Save changes</button></div>
     </form>
   </dialog>
 </body>

@@ -25,6 +25,11 @@ async function getReleaseNames(client = pool) {
   return result.rows.map(row => row.name);
 }
 
+async function getUserNames(client = pool) {
+  const result = await client.query("SELECT name FROM user_catalog ORDER BY name ASC");
+  return result.rows.map(row => row.name);
+}
+
 function isValidTasks(tasks) {
   return Array.isArray(tasks) && tasks.every(task =>
     task &&
@@ -34,6 +39,7 @@ function isValidTasks(tasks) {
     typeof task.description === "string" &&
     ["todo", "progress", "done"].includes(task.status) &&
     (task.release === undefined || typeof task.release === "string") &&
+    (task.assignedTo === undefined || task.assignedTo === null || typeof task.assignedTo === "string") &&
     (task.createdAt === undefined || (typeof task.createdAt === "string" && Number.isFinite(Date.parse(task.createdAt))))
   );
 }
@@ -78,6 +84,12 @@ async function initializeDatabase() {
   try {
     await client.query("BEGIN");
     await client.query(`
+      CREATE TABLE IF NOT EXISTS user_catalog (
+        name TEXT PRIMARY KEY,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await client.query(`
       CREATE TABLE IF NOT EXISTS tasks (
         id TEXT PRIMARY KEY,
         title TEXT NOT NULL,
@@ -88,6 +100,7 @@ async function initializeDatabase() {
       )
     `);
     await client.query("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS release TEXT NOT NULL DEFAULT 'Unassigned'");
+    await client.query("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS assigned_to TEXT REFERENCES user_catalog(name) ON DELETE SET NULL");
     await seedReleaseCatalog(client);
     await client.query(`
       CREATE TABLE IF NOT EXISTS taskboard_migrations (
@@ -220,11 +233,73 @@ const server = http.createServer(async (request, response) => {
     return;
   }
 
+  if (requestUrl.pathname === "/api/users") {
+    if (request.method === "GET") {
+      try {
+        sendJson(response, 200, await getUserNames());
+      } catch (error) {
+        console.error("Unable to load users from PostgreSQL:", error);
+        sendJson(response, 500, { error: "Unable to load users from PostgreSQL" });
+      }
+      return;
+    }
+    if (request.method === "PUT") {
+      let payload;
+      try {
+        payload = await readJsonBody(request);
+      } catch (error) {
+        sendJson(response, error.statusCode || 400, { error: error.message });
+        return;
+      }
+
+      const users = Array.isArray(payload) ? payload : payload && Array.isArray(payload.users) ? payload.users : null;
+      if (!users || users.some(user => typeof user !== "string" || !user.trim() || user.trim().length > 80)) {
+        sendJson(response, 400, { error: "Users must be non-empty names of at most 80 characters." });
+        return;
+      }
+      const nextUserNames = [...new Set(users.map(user => user.trim().replace(/\s+/g, " ")))];
+
+      let client;
+      try {
+        client = await pool.connect();
+        await client.query("BEGIN");
+        await client.query(
+          "UPDATE tasks SET assigned_to = NULL WHERE assigned_to IS NOT NULL AND NOT (assigned_to = ANY($1::text[]))",
+          [nextUserNames]
+        );
+        await client.query(
+          "DELETE FROM user_catalog WHERE NOT (name = ANY($1::text[]))",
+          [nextUserNames]
+        );
+        for (const name of nextUserNames) {
+          await client.query("INSERT INTO user_catalog (name) VALUES ($1) ON CONFLICT (name) DO NOTHING", [name]);
+        }
+        await client.query("COMMIT");
+        sendJson(response, 200, nextUserNames);
+      } catch (error) {
+        if (client) {
+          try {
+            await client.query("ROLLBACK");
+          } catch (rollbackError) {
+            console.error("Unable to roll back user list update:", rollbackError);
+          }
+        }
+        console.error("Unable to save user list to PostgreSQL:", error);
+        sendJson(response, 500, { error: "Unable to save user list to PostgreSQL" });
+      } finally {
+        if (client) client.release();
+      }
+      return;
+    }
+    response.writeHead(405, { Allow: "GET, PUT" }).end();
+    return;
+  }
+
   if (requestUrl.pathname === "/api/tasks") {
     if (request.method === "GET") {
       try {
         const availableReleases = await getReleaseNames();
-        const result = await pool.query("SELECT id, title, description, status, release, created_at FROM tasks ORDER BY created_at DESC, id");
+        const result = await pool.query("SELECT id, title, description, status, release, assigned_to, created_at FROM tasks ORDER BY created_at DESC, id");
         response.setHeader("Cache-Control", "no-store");
         sendJson(response, 200, result.rows.map(task => ({
           id: task.id,
@@ -232,6 +307,7 @@ const server = http.createServer(async (request, response) => {
           description: task.description,
           status: task.status,
           release: normalizeRelease(task.release, availableReleases),
+          assignedTo: task.assigned_to,
           createdAt: task.created_at.toISOString()
         })));
       } catch (error) {
@@ -252,16 +328,31 @@ const server = http.createServer(async (request, response) => {
       let client;
       try {
         client = await pool.connect();
+        if (!Array.isArray(tasks) || tasks.some(task =>
+          !task ||
+          typeof task !== "object" ||
+          Array.isArray(task) ||
+          (task.assignedTo !== undefined && task.assignedTo !== null && typeof task.assignedTo !== "string")
+        )) {
+          sendJson(response, 400, { error: "Invalid task data" });
+          return;
+        }
         const availableReleases = await getReleaseNames(client);
+        const availableUsers = await getUserNames(client);
         const normalizedTasks = tasks.map(task => ({
           ...task,
           description: typeof task.description === "string" ? task.description : "",
           release: normalizeRelease(task.release, availableReleases),
+          assignedTo: typeof task.assignedTo === "string" && task.assignedTo.trim() ? task.assignedTo.trim() : null,
           status: ["todo", "progress", "done"].includes(task.status) ? task.status : "todo"
         }));
 
         if (!isValidTasks(normalizedTasks)) {
           sendJson(response, 400, { error: "Invalid task data" });
+          return;
+        }
+        if (normalizedTasks.some(task => task.assignedTo !== null && !availableUsers.includes(task.assignedTo))) {
+          sendJson(response, 400, { error: "Task assignment must match a user in the user list." });
           return;
         }
 
@@ -270,15 +361,16 @@ const server = http.createServer(async (request, response) => {
         await client.query("DELETE FROM tasks WHERE NOT (id = ANY($1::text[]))", [taskIds]);
         for (const task of normalizedTasks) {
           await client.query(
-            `INSERT INTO tasks (id, title, description, status, release, created_at)
-             VALUES ($1, $2, $3, $4, $5, $6)
+            `INSERT INTO tasks (id, title, description, status, release, assigned_to, created_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
              ON CONFLICT (id) DO UPDATE SET
                title = EXCLUDED.title,
                description = EXCLUDED.description,
                status = EXCLUDED.status,
                release = EXCLUDED.release,
+               assigned_to = EXCLUDED.assigned_to,
                created_at = EXCLUDED.created_at`,
-            [task.id, task.title, task.description, task.status, task.release, task.createdAt || new Date().toISOString()]
+            [task.id, task.title, task.description, task.status, task.release, task.assignedTo, task.createdAt || new Date().toISOString()]
           );
         }
         await client.query("COMMIT");
