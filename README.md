@@ -30,7 +30,7 @@ To set up and run the Kanban board, follow these steps:
    export DATABASE_URL="postgres://postgres:your-password@localhost:5432/taskboard"
 
    # Windows PowerShell
-   $env:DATABASE_URL = "postgres://postgres:Covid19@localhost:5432/TaskManager"
+   $env:DATABASE_URL = "postgresql://taskmanager_ecxz_user:AcZnx2G34ctZBZTuROoHh1lzFhVdyRQ0@dpg-dbt358uk1f9s73ana2gg-a/taskmanager_ecxz"
    ```
 5. Start the local server:
    ```sh
