@@ -1,0 +1,58 @@
+[
+  {
+    "id": "09f75eab-ddf9-4261-904f-8475c3dfba78",
+    "title": "ff",
+    "description": "fff",
+    "status": "todo",
+    "createdAt": "2026-11-15T18:54:08.009Z",
+    "release": "Unassigned"
+  },
+  {
+    "id": "84e69368-f5d4-4baa-a897-6b6cf1d92d9d",
+    "title": "Read me",
+    "description": "# Taskboard\n\nA local Kanban task dashboard built with HTML, CSS, and vanilla JavaScript. Tasks are stored in `tasks.json`; adding, removing, changing status, or dragging a task to another column writes the updated task list to that file.\n\n## Project Structure\n\n```\nkanban-board\n├── index.html\n├── server.js        # Local web server and JSON API\n├── tasks.json       # Persistent task data\n├── css/styles.css\n├── js/app.js\n└── README.md\n```\n\n## Getting Started\n\nTo set up and run the Kanban board, follow these steps:\n\n1. Install [Node.js](https://nodejs.org/) if it is not already installed.\n2. Open a terminal in this folder and start the local server:\n   ```sh\n   node server.js\n   ```\n3. Open `http://127.0.0.1:4173` in your browser. Keep the terminal running while you use the board.\n\n## Features\n\n- Three columns for task management:\n  - **To Do**: Tasks that need to be completed.\n  - **In Progress**: Tasks that are currently being worked on.\n  - **Done**: Completed tasks.\n\n- Drag-and-drop a",
+    "status": "todo",
+    "createdAt": "2026-11-15T00:51:54.981Z",
+    "release": "Unassigned"
+  },
+  {
+    "id": "ca47bcaa-7247-4169-a264-a5c616447bb3",
+    "title": "tast 100",
+    "description": "http://127.0.0.1:4173",
+    "status": "todo",
+    "createdAt": "2026-11-15T00:51:21.416Z",
+    "release": "Unassigned"
+  },
+  {
+    "id": "50998e36-6ae0-42e0-b4de-b02e7eff5205",
+    "title": "test four",
+    "description": "making it repeatable: save it as a skill so anyone on your team can run it as a /command, and record the conventions Claude learned in CLAUDE.md so every session starts with that context instead of Claude relearning it. For larger or riskier changes, plan mode shows you the file list before any edits happen.\nIf you’re introducing Claude Code across",
+    "status": "done",
+    "createdAt": "2026-11-15T00:33:19.780Z",
+    "release": "Unassigned"
+  },
+  {
+    "id": "45688822-1ed2-4db5-9d9c-662ded1a0118",
+    "title": "test three",
+    "description": "making it repeatable: save it as a skill so anyone on your team can run it as a /command, and record the conventions Claude learned in CLAUDE.md so every session starts with that context instead of Claude relearning it. For larger or riskier changes, plan mode shows you the file list before any edits happen.\nIf you’re introducing Claude Code across",
+    "status": "todo",
+    "createdAt": "2026-11-15T00:33:05.715Z",
+    "release": "Unassigned"
+  },
+  {
+    "id": "a7f9a635-8d1d-4d81-b066-2dd7236d28bb",
+    "title": "Update Role",
+    "description": "making it repeatable: save it as a skill so anyone on your team can run it as a /command, and record the conventions Claude learned in CLAUDE.md so every session starts with that context instead of Claude relearning it. For larger or riskier changes, plan mode shows you the file list before any edits happen.\nIf you’re introducing Claude Code across",
+    "status": "done",
+    "createdAt": "2026-11-15T00:20:47.930Z",
+    "release": "Unassigned"
+  },
+  {
+    "id": "dc83a739-bda3-4acf-a72c-083bd4c62b96",
+    "title": "Create User",
+    "description": "making it repeatable: save it as a skill so anyone on your team can run it as a /command, and record the conventions Claude learned in CLAUDE.md so every session starts with that context instead of Claude relearning it. For larger or riskier changes, plan mode shows you the file list before any edits happen.\nIf you’re introducing Claude Code across",
+    "status": "progress",
+    "createdAt": "2026-11-15T00:13:20.586Z",
+    "release": "Unassigned"
+  }
+]

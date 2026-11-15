@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f4f6f5">
+  <title>Taskboard | Northstar Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+  <script src="js/app.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Workspace navigation">
+      <a class="brand" href="#board" aria-label="Northstar Studio home">
+        <span class="brand-mark" aria-hidden="true">N</span>
+        <span><strong>northstar</strong><small>STUDIO WORKSPACE</small></span>
+      </a>
+      <div class="workspace-label">WORKSPACE</div>
+      <nav class="primary-nav" aria-label="Main navigation">
+        <button class="nav-link is-active" type="button" data-view="board" aria-current="page"><span class="nav-glyph board-glyph" aria-hidden="true"></span>Task board</button>
+        <button class="nav-link" type="button" data-view="dashboard"><span class="nav-glyph dashboard-glyph" aria-hidden="true"></span>Dashboard</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="team-card"><span class="team-avatar" aria-hidden="true">NS</span><span><strong>Northstar Studio</strong><small>Personal workspace</small></span><span class="team-menu" aria-hidden="true">···</span></div>
+        <div class="sidebar-footnote"><span class="live-dot"></span> Local workspace</div>
+      </div>
+    </aside>
+
+    <main class="main-content" id="board">
+      <header class="topbar">
+        <div class="breadcrumbs"><span>Workspace</span><span class="crumb-separator">/</span><strong id="view-breadcrumb">Task board</strong></div>
+        <div class="topbar-right"><span class="save-state" id="save-state" role="status" aria-live="polite"><span class="save-dot"></span>Connecting...</span><span class="profile-avatar" aria-label="Workspace profile">NS</span></div>
+      </header>
+      <div class="page-content">
+        <section class="page-view dashboard-view" id="dashboard-view" aria-labelledby="dashboard-title" hidden>
+          <div class="dashboard-heading">
+            <div><p class="eyebrow">WORKSPACE OVERVIEW <span class="eyebrow-line"></span> <span id="dashboard-date"></span></p><h1 id="dashboard-title">Dashboard</h1><p class="page-subtitle">Track the pace of work across every task status.</p></div>
+          </div>
+          <section class="dashboard-metrics" aria-label="Task totals">
+            <article class="dashboard-metric"><span class="metric-label">TOTAL TASKS</span><strong id="dashboard-total">0</strong><span>All work items</span></article>
+            <article class="dashboard-metric"><span class="metric-label">TO DO</span><strong id="dashboard-todo">0</strong><span>Waiting to start</span></article>
+            <article class="dashboard-metric"><span class="metric-label">IN PROGRESS</span><strong id="dashboard-progress">0</strong><span>Work underway</span></article>
+            <article class="dashboard-metric"><span class="metric-label">COMPLETED</span><strong id="dashboard-done">0</strong><span id="dashboard-completion">Finished tasks</span></article>
+          </section>
+          <div class="dashboard-panels">
+            <section class="dashboard-panel chart-panel" aria-labelledby="chart-heading">
+              <header class="panel-heading"><div><h2 id="chart-heading">Tasks by status</h2><p>Distribution of work across your board</p></div><span class="panel-period">CURRENT</span></header>
+              <div class="chart-content">
+                <div class="chart-wrap"><canvas id="task-status-chart" role="img" aria-label="Pie chart of tasks by status"></canvas><div class="chart-fallback" id="chart-fallback" role="img" aria-label="Pie chart of tasks by status" hidden></div><p class="chart-message" id="chart-message" hidden></p></div>
+                <div class="chart-breakdown" aria-label="Task status breakdown">
+                  <div class="breakdown-row"><span class="breakdown-label"><i class="breakdown-dot dot-todo"></i>To do</span><strong id="chart-todo-count">0</strong><span id="chart-todo-percent">0%</span></div>
+                  <div class="breakdown-row"><span class="breakdown-label"><i class="breakdown-dot dot-progress"></i>In progress</span><strong id="chart-progress-count">0</strong><span id="chart-progress-percent">0%</span></div>
+                  <div class="breakdown-row"><span class="breakdown-label"><i class="breakdown-dot dot-done"></i>Done</span><strong id="chart-done-count">0</strong><span id="chart-done-percent">0%</span></div>
+                </div>
+              </div>
+            </section>
+            <section class="dashboard-panel progress-panel" aria-labelledby="progress-heading-dashboard">
+              <header class="panel-heading"><div><h2 id="progress-heading-dashboard">Completion</h2><p>Share of tasks marked done</p></div><span class="completion-symbol" aria-hidden="true">✓</span></header>
+              <div class="completion-value"><strong id="completion-value">0%</strong><span>of all tasks</span></div>
+              <div class="completion-track" role="progressbar" aria-label="Task completion rate" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="completion-track"><span id="completion-fill"></span></div>
+              <p class="completion-note" id="completion-note">Complete a task to start building momentum.</p>
+            </section>
+          </div>
+        </section>
+
+        <section class="page-view board-view" id="board-view" aria-label="Task board">
+        <section class="page-heading" aria-labelledby="page-title">
+          <div><p class="eyebrow">YOUR WORKSPACE <span class="eyebrow-line"></span> <span id="today-label"></span></p><h1 id="page-title">Task board</h1><p class="page-subtitle">A clear view of what needs doing, what's moving, and what's finished.</p></div>
+          <form class="quick-add" id="task-form"><label class="visually-hidden" for="task-input">Task title</label><input id="task-input" type="text" maxlength="180" placeholder="Task title" required><label class="visually-hidden" for="task-description">Task description</label><textarea id="task-description" maxlength="1000" placeholder="Add a short description..." rows="2" required></textarea><label class="visually-hidden" for="task-release">Task release</label><select id="task-release" aria-label="Task release"></select><button class="add-button" type="submit"><span aria-hidden="true">+</span> Add task</button></form>
+        </section>
+
+        <section class="overview" aria-label="Task overview">
+          <article class="metric metric-total"><div class="metric-top"><span class="metric-label">TOTAL TASKS</span><span class="metric-icon icon-total" aria-hidden="true"></span></div><div class="metric-value" id="total-count">0</div><div class="metric-caption">Across your board</div></article>
+          <article class="metric metric-active"><div class="metric-top"><span class="metric-label">IN PROGRESS</span><span class="metric-icon icon-active" aria-hidden="true"></span></div><div class="metric-value" id="progress-count">0</div><div class="metric-caption">Currently underway</div></article>
+          <article class="metric metric-complete"><div class="metric-top"><span class="metric-label">COMPLETED</span><span class="metric-icon icon-complete" aria-hidden="true"></span></div><div class="metric-value" id="done-count">0</div><div class="metric-caption" id="completion-caption">Ready when you are</div></article>
+          <div class="overview-note"><span class="note-mark" aria-hidden="true">✳</span><span><strong>Small steps, steady progress.</strong><br>Keep the next move visible.</span></div>
+        </section>
+
+        <section class="board-section" aria-labelledby="board-heading">
+          <div class="board-toolbar"><div class="board-title-wrap"><h2 id="board-heading">Project flow</h2><span class="board-total" id="board-total">0 tasks</span></div><div class="board-tools"><label class="search-box"><span class="search-icon" aria-hidden="true"></span><span class="visually-hidden">Search tasks</span><input id="task-search" type="search" placeholder="Search tasks"><kbd>/</kbd></label><label class="release-filter"><span class="visually-hidden">Filter by release</span><select id="task-release-filter" aria-label="Filter tasks by release"></select></label><button class="release-admin-button" id="manage-releases-button" type="button">Manage releases</button></div></div>
+          <div class="board" aria-label="Task board">
+            <section class="column column-todo" data-status="todo" aria-labelledby="todo-heading"><header class="column-heading"><span class="status-indicator"></span><h3 id="todo-heading">To do</h3><span class="column-count" id="todo-count">0</span><span class="column-menu" aria-hidden="true">···</span></header><div class="task-list" id="todo" aria-label="Tasks to do"></div><button class="column-add" type="button" data-add-status="todo"><span aria-hidden="true">+</span> Add task</button></section>
+            <section class="column column-progress" data-status="progress" aria-labelledby="progress-heading"><header class="column-heading"><span class="status-indicator"></span><h3 id="progress-heading">In progress</h3><span class="column-count" id="progress-column-count">0</span><span class="column-menu" aria-hidden="true">···</span></header><div class="task-list" id="progress" aria-label="Tasks in progress"></div><button class="column-add" type="button" data-add-status="progress"><span aria-hidden="true">+</span> Add task</button></section>
+            <section class="column column-done" data-status="done" aria-labelledby="done-heading"><header class="column-heading"><span class="status-indicator"></span><h3 id="done-heading">Done</h3><span class="column-count" id="done-count-column">0</span><span class="column-menu" aria-hidden="true">···</span></header><div class="task-list" id="done" aria-label="Completed tasks"></div><button class="column-add" type="button" data-add-status="done"><span aria-hidden="true">+</span> Add task</button></section>
+          </div>
+        </section>
+        <p class="board-hint">Drag tasks between columns or update their status from a task card.</p>
+        </section>
+      </div>
+    </main>
+  </div>
+  <dialog class="task-dialog" id="edit-task-dialog" aria-labelledby="edit-task-heading">
+    <form id="edit-task-form">
+      <div class="dialog-heading"><div><p class="eyebrow">TASK DETAILS</p><h2 id="edit-task-heading">Edit task</h2></div><button class="dialog-close" id="cancel-edit" type="button" aria-label="Close edit dialog">×</button></div>
+      <label for="edit-task-title">Title</label>
+      <input id="edit-task-title" type="text" maxlength="180" required>
+      <label for="edit-task-description">Description</label>
+      <textarea id="edit-task-description" maxlength="1000" rows="5" required></textarea>
+      <label for="edit-task-release">Release</label>
+      <select id="edit-task-release" aria-label="Task release"></select>
+      <div class="dialog-actions"><button class="cancel-button" id="cancel-edit-action" type="button">Cancel</button><button class="add-button" type="submit">Save changes</button></div>
+    </form>
+  </dialog>
+  <dialog class="task-dialog release-dialog" id="release-admin-dialog" aria-labelledby="release-admin-heading">
+    <form id="release-admin-form">
+      <div class="dialog-heading"><div><p class="eyebrow">RELEASES</p><h2 id="release-admin-heading">Manage releases</h2></div><button class="dialog-close" id="cancel-release-admin" type="button" aria-label="Close release manager">×</button></div>
+      <label for="new-release-name">Add release</label>
+      <div class="release-admin-inputs">
+        <input id="new-release-name" type="text" maxlength="80" placeholder="Release 5.0">
+        <button class="add-button small-button" id="add-release-button" type="button">Add</button>
+      </div>
+      <ul class="release-list" id="release-list" aria-label="Available releases"></ul>
+      <div class="dialog-actions"><button class="cancel-button" id="close-release-admin" type="button">Close</button><button class="add-button" type="submit">Save changes</button></div>
+    </form>
+  </dialog>
+</body>
+</html>
